@@ -24,7 +24,7 @@ installed. Run `sbt`, and then use any of the following commands:
  * `scalastyle`: run the style-checker on the code
  * `validate`: run tests, style-checker, and doc generation
 
-[![Build Status](https://api.travis-ci.org/non/cats.png)](https://travis-ci.org/non/cats)
+[![Build Status](https://travis-ci.org/metadoc/cats.svg)](https://travis-ci.org/metadoc/cats)
 [![Workflow](https://badge.waffle.io/non/cats.png?label=ready&title=Ready)](https://waffle.io/non/cats)
 [![Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/non/cats)
 
