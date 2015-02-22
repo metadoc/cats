@@ -8,6 +8,8 @@ import sbtrelease.ReleaseStateTransformations._
 import sbtrelease.Utilities._
 import sbtunidoc.Plugin.UnidocKeys._
 
+seq(metadocSettings:_*)
+
 lazy val buildSettings = Seq(
   organization := "org.spire-math",
   scalaVersion := "2.11.5",

@@ -3,6 +3,10 @@ resolvers += Resolver.url(
     url("http://dl.bintray.com/content/tpolecat/sbt-plugin-releases"))(
         Resolver.ivyStylePatterns)
 
+resolvers += Resolver.url("bintray-mg",
+  url("http://dl.bintray.com/content/masseguillaume/sbt-plugins/"))(Resolver.ivyStylePatterns)
+
+addSbtPlugin("com.scalakata.metadoc" % "metadoc-sbt-plugin" % "0.1.0")
 addSbtPlugin("com.eed3si9n"      % "sbt-unidoc"             % "0.3.2")
 addSbtPlugin("com.github.gseitz" % "sbt-release"            % "0.7.1")
 addSbtPlugin("com.typesafe.sbt"  % "sbt-pgp"                % "0.8")
