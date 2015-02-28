@@ -14,6 +14,17 @@ lazy val buildSettings = Seq(
   crossScalaVersions := Seq("2.11.5")
 )
 
+lazy val metadoc = ProjectRef(file("/home/masgui/FOOS/scalameta/metadoc/"), "compilerPlugin")
+lazy val metadocPlugin = project.settings(buildSettings: _*).dependsOn(metadoc) // fake
+
+def usePlugin(plugin: ProjectReference) = {
+  scalacOptions ++= {
+    val jar = (Keys.`package` in (plugin, Compile)).value
+    System.setProperty("sbt.paths.plugin.jar", jar.getAbsolutePath)
+    Seq("-Xplugin:" + jar.getAbsolutePath, "-Jdummy=" + jar.lastModified)
+  }
+}
+
 lazy val commonSettings = Seq(
   scalacOptions ++= Seq(
     "-deprecation",
@@ -43,6 +54,7 @@ lazy val commonSettings = Seq(
     compilerPlugin("org.scalamacros" % "paradise" % "2.1.0-M5" cross CrossVersion.full),
     compilerPlugin("org.spire-math" %% "kind-projector" % "0.5.2")
   ),
+  usePlugin(metadoc),
   scmInfo := Some(ScmInfo(url("https://github.com/non/cats"),
     "git@github.com:non/cats.git"))
 )
@@ -94,6 +106,7 @@ lazy val core = project.dependsOn(macros)
   .settings(moduleName := "cats-core")
   .settings(catsSettings: _*)
   .settings(
+    
     sourceGenerators in Compile <+= (sourceManaged in Compile).map(Boilerplate.gen)
   )
 
