@@ -1,4 +1,5 @@
-package cats.laws
+package cats
+package laws
 
 import cats.functor.Contravariant
 import cats.syntax.contravariant._
@@ -18,5 +19,5 @@ trait ContravariantLaws[F[_]] extends InvariantLaws[F] {
 
 object ContravariantLaws {
   def apply[F[_]](implicit ev: Contravariant[F]): ContravariantLaws[F] =
-    new ContravariantLaws[F] { def F = ev }
+    new ContravariantLaws[F] { def F: Contravariant[F] = ev }
 }

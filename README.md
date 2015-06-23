@@ -27,6 +27,7 @@ installed. Run `sbt`, and then use any of the following commands:
 [![Build Status](https://travis-ci.org/metadoc/cats.svg)](https://travis-ci.org/metadoc/cats)
 [![Workflow](https://badge.waffle.io/non/cats.png?label=ready&title=Ready)](https://waffle.io/non/cats)
 [![Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/non/cats)
+[![codecov.io](http://codecov.io/github/non/cats/coverage.svg?branch=master)](http://codecov.io/github/non/cats?branch=master)
 
 ### Design
 
@@ -64,9 +65,8 @@ type classes and data types.
 
 Initially Cats will support the following modules:
 
- * `core`: Almost exclusively definitions for widely-used type classes.
+ * `core`: Definitions for widely-used type classes and data types
  * `std`: Standard type class instances and other useful data types.
- * `data`: Data types and corresponding type class instances.
  * `laws`: The encoded laws for type classes, exported to assist third-party testing.
  * `tests`: Verifies the laws, and runs any other tests. Not published.
 

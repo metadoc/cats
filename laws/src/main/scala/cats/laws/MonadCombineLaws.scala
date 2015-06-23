@@ -1,12 +1,12 @@
-package cats.laws
+package cats
+package laws
 
-import cats.MonadCombine
 import cats.syntax.all._
 
 /**
  * Laws that must be obeyed by any [[MonadCombine]].
  */
-trait MonadCombineLaws[F[_]] extends MonadFilterLaws[F] with MonoidKLaws[F] {
+trait MonadCombineLaws[F[_]] extends MonadFilterLaws[F] with AlternativeLaws[F] {
   implicit override def F: MonadCombine[F]
 
   def monadCombineLeftDistributivity[A, B](fa: F[A], fa2: F[A], f: A => F[B]): IsEq[F[B]] =
@@ -15,5 +15,5 @@ trait MonadCombineLaws[F[_]] extends MonadFilterLaws[F] with MonoidKLaws[F] {
 
 object MonadCombineLaws {
   def apply[F[_]](implicit ev: MonadCombine[F]): MonadCombineLaws[F] =
-    new MonadCombineLaws[F] { def F = ev }
+    new MonadCombineLaws[F] { def F: MonadCombine[F] = ev }
 }

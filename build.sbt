@@ -7,13 +7,21 @@ import sbtrelease.ReleasePlugin.ReleaseKeys.releaseProcess
 import sbtrelease.ReleaseStateTransformations._
 import sbtrelease.Utilities._
 import sbtunidoc.Plugin.UnidocKeys._
+import ScoverageSbtPlugin._
+
+lazy val scoverageSettings = Seq(
+  ScoverageKeys.coverageMinimum := 60,
+  ScoverageKeys.coverageFailOnMinimum := false,
+  ScoverageKeys.coverageHighlighting := scalaBinaryVersion.value != "2.10",
+  ScoverageKeys.coverageExcludedPackages := "cats\\.bench\\..*"
+)
 
 seq(metadocSettings:_*)
 
 lazy val buildSettings = Seq(
   organization := "org.spire-math",
-  scalaVersion := "2.11.5",
-  crossScalaVersions := Seq("2.11.5")
+  scalaVersion := "2.11.6",
+  crossScalaVersions := Seq("2.11.6")
 )
 
 lazy val commonSettings = Seq(
@@ -28,6 +36,7 @@ lazy val commonSettings = Seq(
     "-unchecked",
     "-Xfatal-warnings",
     "-Xlint",
+    "-Yinline-warnings",
     "-Yno-adapted-args",
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
@@ -36,20 +45,22 @@ lazy val commonSettings = Seq(
   ),
   resolvers ++= Seq(
     "bintray/non" at "http://dl.bintray.com/non/maven",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
   ),
   libraryDependencies ++= Seq(
-    "com.github.mpilquist" %% "simulacrum" % "0.2.0",
-    "org.spire-math" %% "algebra" % "0.2.0-SNAPSHOT" from "http://plastic-idolatry.com/jars/algebra_2.11-0.2.0-SNAPSHOT.jar",
+    "com.github.mpilquist" %% "simulacrum" % "0.3.0",
+    "org.spire-math" %% "algebra" % "0.2.0-SNAPSHOT",
     "org.typelevel" %% "machinist" % "0.3.0",
     compilerPlugin("org.scalamacros" % "paradise" % "2.1.0-M5" cross CrossVersion.full),
-    compilerPlugin("org.spire-math" %% "kind-projector" % "0.5.2")
+    compilerPlugin("org.spire-math" %% "kind-projector" % "0.5.4")
   ),
   scmInfo := Some(ScmInfo(url("https://github.com/non/cats"),
-    "git@github.com:non/cats.git"))
+    "scm:git:git@github.com:non/cats.git")),
+  commands += gitSnapshots
 )
 
-lazy val catsSettings = buildSettings ++ commonSettings ++ publishSettings ++ releaseSettings
+lazy val catsSettings = buildSettings ++ commonSettings ++ publishSettings ++ releaseSettings ++ scoverageSettings
 
 lazy val disciplineDependencies = Seq(
   "org.scalacheck" %% "scalacheck" % "1.11.3",
@@ -58,10 +69,11 @@ lazy val disciplineDependencies = Seq(
 
 lazy val docSettings = Seq(
   autoAPIMappings := true,
-  unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(core, laws, data, std),
+  unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(core, free, std),
   site.addMappingsToSiteDir(mappings in (ScalaUnidoc, packageDoc), "api"),
   site.addMappingsToSiteDir(tut, "_tut"),
   ghpagesNoJekyll := false,
+  siteMappings += file("CONTRIBUTING.md") -> "contributing.md",
   scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
     "-doc-source-url", scmInfo.value.get.browseUrl + "/tree/master€{FILE_PATH}.scala",
     "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath
@@ -72,65 +84,71 @@ lazy val docSettings = Seq(
 
 lazy val docs = project
   .settings(moduleName := "cats-docs")
-  .settings(catsSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(unidocSettings: _*)
-  .settings(site.settings: _*)
-  .settings(ghpages.settings: _*)
-  .settings(tutSettings: _*)
-  .settings(docSettings: _*)
-  .settings(tutSettings: _*)
-  .dependsOn(core, std, data)
+  .settings(catsSettings)
+  .settings(noPublishSettings)
+  .settings(unidocSettings)
+  .settings(site.settings)
+  .settings(ghpages.settings)
+  .settings(docSettings)
+  .settings(tutSettings)
+  .dependsOn(core, std, free)
 
 lazy val cats = project.in(file("."))
-  .settings(catsSettings: _*)
-  .settings(noPublishSettings: _*)
-  .aggregate(macros, core, laws, tests, docs, data, std, bench)
-  .dependsOn(macros, core, laws, tests, docs, data, std, bench)
+  .settings(moduleName := "cats")
+  .settings(catsSettings)
+  .aggregate(macros, core, laws, tests, docs, free, std, bench, state)
+  .dependsOn(macros, core, laws, tests, docs, free, std, bench, state)
 
 lazy val macros = project
   .settings(moduleName := "cats-macros")
-  .settings(catsSettings: _*)
+  .settings(catsSettings)
 
 lazy val core = project.dependsOn(macros)
   .settings(moduleName := "cats-core")
-  .settings(catsSettings: _*)
+  .settings(catsSettings)
+  .settings(
+    sourceGenerators in Compile <+= (sourceManaged in Compile).map(Boilerplate.gen)
+  )
 
-lazy val laws = project.dependsOn(macros, core, data)
+lazy val laws = project.dependsOn(macros, core, free, std)
   .settings(moduleName := "cats-laws")
-  .settings(catsSettings: _*)
+  .settings(catsSettings)
   .settings(
     libraryDependencies ++= disciplineDependencies ++ Seq(
-      "org.spire-math" %% "algebra-laws" % "0.2.0-SNAPSHOT" from "http://plastic-idolatry.com/jars/algebra-laws_2.11-0.2.0-SNAPSHOT.jar"
+      "org.spire-math" %% "algebra-laws" % "0.2.0-SNAPSHOT"
     )
   )
 
-lazy val std = project.dependsOn(macros, core, laws)
+lazy val std = project.dependsOn(macros, core)
   .settings(moduleName := "cats-std")
-  .settings(catsSettings: _*)
+  .settings(catsSettings)
   .settings(
-    libraryDependencies += "org.spire-math" %% "algebra-std" % "0.2.0-SNAPSHOT" from "http://plastic-idolatry.com/jars/algebra-std_2.11-0.2.0-SNAPSHOT.jar"
+    libraryDependencies += "org.spire-math" %% "algebra-std" % "0.2.0-SNAPSHOT"
   )
 
-lazy val tests = project.dependsOn(macros, core, data, std, laws)
+lazy val tests = project.dependsOn(macros, core, free, std, laws)
   .settings(moduleName := "cats-tests")
-  .settings(catsSettings: _*)
-  .settings(noPublishSettings: _*)
+  .settings(catsSettings)
+  .settings(noPublishSettings)
   .settings(
     libraryDependencies ++= disciplineDependencies ++ Seq(
       "org.scalatest" %% "scalatest" % "2.1.3" % "test"
     )
   )
 
-lazy val bench = project.dependsOn(macros, core, data, std, laws)
+lazy val bench = project.dependsOn(macros, core, free, std, laws)
   .settings(moduleName := "cats-bench")
-  .settings(catsSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(jmhSettings: _*)
+  .settings(catsSettings)
+  .settings(noPublishSettings)
+  .settings(jmhSettings)
 
-lazy val data = project.dependsOn(macros, core)
-  .settings(moduleName := "cats-data")
-  .settings(catsSettings: _*)
+lazy val free = project.dependsOn(macros, core)
+  .settings(moduleName := "cats-free")
+  .settings(catsSettings)
+
+lazy val state = project.dependsOn(macros, core, free, tests % "test -> test")
+  .settings(moduleName := "cats-state")
+  .settings(catsSettings)
 
 lazy val publishSettings = Seq(
   homepage := Some(url("https://github.com/non/cats")),
@@ -143,17 +161,12 @@ lazy val publishSettings = Seq(
   pomIncludeRepository := { _ => false },
   publishTo <<= version { (v: String) =>
     val nexus = "https://oss.sonatype.org/"
-
     if (v.trim.endsWith("SNAPSHOT"))
       Some("snapshots" at nexus + "content/repositories/snapshots")
     else
       Some("releases"  at nexus + "service/local/staging/deploy/maven2")
   },
   pomExtra := (
-    <scm>
-      <url>git@github.com:non/cats.git</url>
-      <connection>scm:git:git@github.com:non/cats.git</connection>
-    </scm>
     <developers>
       <developer>
         <id>non</id>
@@ -199,3 +212,15 @@ lazy val noPublishSettings = Seq(
 )
 
 addCommandAlias("validate", ";compile;test;scalastyle;test:scalastyle;unidoc;tut")
+
+def gitSnapshots = Command.command("gitSnapshots") { state =>
+  val extracted = Project extract state
+  val newVersion = Seq(version in ThisBuild := git.gitDescribedVersion.value.get + "-SNAPSHOT")
+  extracted.append(newVersion, state)
+}
+
+// For Travis CI - see http://www.cakesolutions.net/teamblogs/publishing-artefacts-to-oss-sonatype-nexus-using-sbt-and-travis-ci
+credentials ++= (for {
+  username <- Option(System.getenv().get("SONATYPE_USERNAME"))
+  password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
+} yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)).toSeq

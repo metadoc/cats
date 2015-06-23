@@ -1,6 +1,6 @@
-package cats.tests
+package cats
+package tests
 
-import cats._
 import scala.collection.mutable
 
 class RegressionTests extends CatsSuite {
@@ -8,16 +8,16 @@ class RegressionTests extends CatsSuite {
   // toy state class
   // not stack safe, very minimal, not for actual use
   case class State[S, A](run: S => (A, S)) { self =>
-    def map[B](f: A => B) =
-      State[S, B]({ s => val (a, s2) = self.run(s); (f(a), s2) })
-    def flatMap[B](f: A => State[S, B]) =
-      State[S, B]({ s => val (a, s2) = self.run(s); f(a).run(s2) })
+    def map[B](f: A => B): State[S, B] =
+      State({ s => val (a, s2) = self.run(s); (f(a), s2) })
+    def flatMap[B](f: A => State[S, B]): State[S, B] =
+      State({ s => val (a, s2) = self.run(s); f(a).run(s2) })
   }
 
   object State {
-    implicit def instance[S] = new Monad[State[S, ?]] {
-      def pure[A](a: A) = State[S, A](s => (a, s))
-      def flatMap[A, B](sa: State[S, A])(f: A => State[S, B]) = sa.flatMap(f)
+    implicit def instance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
+      def pure[A](a: A): State[S, A] = State(s => (a, s))
+      def flatMap[A, B](sa: State[S, A])(f: A => State[S, B]): State[S, B] = sa.flatMap(f)
     }
   }
 
@@ -48,5 +48,30 @@ class RegressionTests extends CatsSuite {
 
     // ensure that side-effects occurred in "correct" order
     assert(buf.toList == names)
+  }
+
+  test("#167: confirm ap2 order") {
+    val twelve = Apply[State[String, ?]].ap2(
+      State[String, Unit](s => ((), s + "1")),
+      State[String, Unit](s => ((), s + "2"))
+    )(State.instance[String].pure((_: Unit, _: Unit) => ())).run("")._2
+    assert(twelve == "12")
+  }
+
+  test("#167: confirm map2 order") {
+    val twelve = Apply[State[String, ?]].map2(
+      State[String, Unit](s => ((), s + "1")),
+      State[String, Unit](s => ((), s + "2"))
+    )((_: Unit, _: Unit) => ()).run("")._2
+    assert(twelve == "12")
+  }
+
+  test("#167: confirm map3 order") {
+    val oneTwoThree = Apply[State[String, ?]].map3(
+      State[String, Unit](s => ((), s + "1")),
+      State[String, Unit](s => ((), s + "2")),
+      State[String, Unit](s => ((), s + "3"))
+    )((_: Unit, _: Unit, _: Unit) => ()).run("")._2
+    assert(oneTwoThree == "123")
   }
 }

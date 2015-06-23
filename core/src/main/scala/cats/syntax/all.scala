@@ -1,4 +1,5 @@
-package cats.syntax
+package cats
+package syntax
 
 trait AllSyntax
     extends ApplySyntax
@@ -18,5 +19,8 @@ trait AllSyntax
     with PartialOrderSyntax
     with ProfunctorSyntax
     with SemigroupSyntax
-    with ShowSyntax
+    with SemigroupKSyntax
+    with Show.ToShowOps
+    with SplitSyntax
     with StrongSyntax
+    with TraverseSyntax

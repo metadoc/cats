@@ -1,4 +1,5 @@
-package cats.laws
+package cats
+package laws
 
 import cats.functor.Invariant
 import cats.syntax.invariant._
@@ -18,5 +19,5 @@ trait InvariantLaws[F[_]] {
 
 object InvariantLaws {
   def apply[F[_]](implicit ev: Invariant[F]): InvariantLaws[F] =
-    new InvariantLaws[F] { def F = ev }
+    new InvariantLaws[F] { def F: Invariant[F] = ev }
 }

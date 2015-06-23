@@ -4,8 +4,8 @@ package std
 import algebra.Eq
 
 trait OptionInstances {
-  implicit val optionInstance: Traverse[Option] with MonadCombine[Option] with CoflatMap[Option] =
-    new Traverse[Option] with MonadCombine[Option] with CoflatMap[Option] {
+  implicit val optionInstance: Traverse[Option] with MonadCombine[Option] with CoflatMap[Option] with Alternative[Option] =
+    new Traverse[Option] with MonadCombine[Option] with CoflatMap[Option] with Alternative[Option] {
 
       def empty[A]: Option[A] = None
 
@@ -31,16 +31,10 @@ trait OptionInstances {
           case Some(a) => f(b, a)
         }
 
-      override def foldRight[A, B](fa: Option[A], b: B)(f: (A, B) => B): B =
+      def partialFold[A, B](fa: Option[A])(f: A => Fold[B]): Fold[B] =
         fa match {
-          case None => b
-          case Some(a) => f(a, b)
-        }
-
-      def foldLazy[A, B](fa: Option[A], b: Lazy[B])(f: A => Fold[B]): Lazy[B] =
-        fa match {
-          case None => b
-          case Some(a) => Lazy(f(a).complete(b.value))
+          case None => Fold.Pass
+          case Some(a) => f(a)
         }
 
       def traverse[G[_]: Applicative, A, B](fa: Option[A])(f: A => G[B]): G[Option[B]] =

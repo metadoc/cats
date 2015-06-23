@@ -1,5 +1,6 @@
 package cats
 
+import scala.collection.mutable
 import simulacrum._
 
 /**
@@ -14,14 +15,16 @@ import simulacrum._
  * Foldable[F] is implemented in terms of two basic methods:
  *
  *  - `foldLeft(fa, b)(f)` eagerly folds `fa` from left-to-right.
- *  - `foldLazy(fa, lb)(f)` lazily folds `fa` from right-to-left.
+ *  - `foldRight(fa, b)(f)` lazily folds `fa` from right-to-left.
+ *
+ * (Actually `foldRight` is implemented in terms of `partialFold`.)
  *
  * Beyond these it provides many other useful methods related to
  * folding over F[A] values.
  *
  * See: [[https://www.cs.nott.ac.uk/~gmh/fold.pdf A tutorial on the universality and expressiveness of fold]]
  */
-@typeclass trait Foldable[F[_]] { self =>
+@typeclass trait Foldable[F[_]] extends Serializable { self =>
 
   /**
    * Left associative fold on 'F' using the function 'f'.
@@ -38,19 +41,28 @@ import simulacrum._
    * For more detailed information about how this method works see the
    * documentation for `Fold[_]`.
    */
-  def foldLazy[A, B](fa: F[A], b: Lazy[B])(f: A => Fold[B]): Lazy[B]
+  def foldRight[A, B](fa: F[A], lb: Lazy[B])(f: A => Fold[B]): Lazy[B] =
+    Lazy(partialFold[A, B](fa)(f).complete(lb))
 
   /**
-   * Right associative fold on 'F' using the function 'f'.
-   *
-   * The default implementation is written in terms of
-   * `foldLazy`. Most instances will want to override this method for
-   * performance reasons.
+   * Low-level method that powers `foldRight`.
    */
-  def foldRight[A, B](fa: F[A], b: B)(f: (A, B) => B): B =
-    foldLazy(fa, Lazy.eager(b)) { a =>
-      Fold.Continue(b => f(a, b))
-    }.value
+  def partialFold[A, B](fa: F[A])(f: A => Fold[B]): Fold[B]
+
+
+  def reduceLeftToOption[A, B](fa: F[A])(f: A => B)(g: (B, A) => B): Option[B] =
+    foldLeft(fa, Option.empty[B]) {
+      case (Some(b), a) => Some(g(b, a))
+      case (None, a) => Some(f(a))
+    }
+
+  def reduceRightToOption[A, B](fa: F[A])(f: A => B)(g: A => Fold[B]): Lazy[Option[B]] =
+    foldRight(fa, Lazy.eager(Option.empty[B])) { a =>
+      Fold.Continue {
+        case None => Some(f(a))
+        case Some(b) => Some(g(a).complete(Lazy.eager(f(a))))
+      }
+    }
 
   /**
    * Fold implemented using the given Monoid[A] instance.
@@ -65,9 +77,7 @@ import simulacrum._
    * combining them using the given `Monoid[B]` instance.
    */
   def foldMap[A, B](fa: F[A])(f: A => B)(implicit B: Monoid[B]): B =
-    foldLeft(fa, B.empty) { (b, a) =>
-      B.combine(b, f(a))
-    }
+    foldLeft(fa, B.empty)((b, a) => B.combine(b, f(a)))
 
   /**
    * Traverse `F[A]` using `Applicative[G]`.
@@ -76,6 +86,7 @@ import simulacrum._
    * `Applicative#map2`.
    *
    * For example:
+   *
    * {{{
    *     def parseInt(s: String): Option[Int] = ...
    *     val F = Foldable[List]
@@ -126,6 +137,44 @@ import simulacrum._
   def foldK[G[_], A](fga: F[G[A]])(implicit G: MonoidK[G]): G[A] =
     fold(fga)(G.algebra)
 
+
+  /**
+   * Find the first element matching the predicate, if one exists.
+   */
+  def find[A](fa: F[A])(f: A => Boolean): Option[A] =
+    foldRight(fa, Lazy.eager(None: Option[A])) { a =>
+      if (f(a)) Fold.Return(Some(a)) else Fold.Pass
+    }.value
+
+
+  /**
+   * Convert F[A] to a List[A].
+   */
+  def toList[A](fa: F[A]): List[A] =
+    foldLeft(fa, mutable.ListBuffer.empty[A]) { (buf, a) =>
+      buf += a
+    }.toList
+
+
+  /**
+   * Convert F[A] to a List[A], only including elements which match `p`.
+   */
+  def filter_[A](fa: F[A])(p: A => Boolean): List[A] =
+    foldLeft(fa, mutable.ListBuffer.empty[A]) { (buf, a) =>
+      if (p(a)) buf += a else buf
+    }.toList
+
+
+  /**
+   * Convert F[A] to a List[A], dropping all initial elements which
+   * match `p`.
+   */
+  def dropWhile_[A](fa: F[A])(p: A => Boolean): List[A] =
+    foldLeft(fa, mutable.ListBuffer.empty[A]) { (buf, a) =>
+      if (buf.nonEmpty || p(a)) buf += a else buf
+    }.toList
+
+
   /**
    * Compose this `Foldable[F]` with a `Foldable[G]` to create
    * a `Foldable[F[G]]` instance.
@@ -147,22 +196,12 @@ trait CompositeFoldable[F[_], G[_]] extends Foldable[λ[α => F[G[α]]]] {
   /**
    * Left assocative fold on F[G[A]] using 'f'
    */
-  def foldLeft[A, B](fa: F[G[A]], b: B)(f: (B, A) => B): B =
-    F.foldLeft(fa, b)((b, a) => G.foldLeft(a, b)(f))
-
-  /**
-   * Left assocative fold on F[G[A]] using 'f'
-   */
-  override def foldRight[A, B](fa: F[G[A]], b: B)(f: (A, B) => B): B =
-    F.foldRight(fa, b)((a, b) => G.foldRight(a, b)(f))
+  def foldLeft[A, B](fga: F[G[A]], b: B)(f: (B, A) => B): B =
+    F.foldLeft(fga, b)((b, a) => G.foldLeft(a, b)(f))
 
   /**
    * Right associative lazy fold on `F` using the folding function 'f'.
    */
-  def foldLazy[A, B](fa: F[G[A]], b: Lazy[B])(f: A => Fold[B]): Lazy[B] =
-    F.foldLazy(fa, b) { ga =>
-      Fold.Continue { b =>
-        G.foldLazy(ga, Lazy.eager(b))(f).value
-      }
-    }
+  def partialFold[A, B](fga: F[G[A]])(f: A => Fold[B]): Fold[B] =
+    F.partialFold(fga)(ga => G.partialFold(ga)(f))
 }

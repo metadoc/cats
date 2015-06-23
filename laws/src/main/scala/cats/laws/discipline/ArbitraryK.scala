@@ -1,9 +1,11 @@
 package cats
-package laws.discipline
+package laws
+package discipline
 
-import cats.data.{Cokleisli, Kleisli, Or, Const}
-import org.scalacheck.Arbitrary
+import cats.data.{Cokleisli, Kleisli, NonEmptyList, Validated, Xor, XorT, Ior, Const}
 import cats.laws.discipline.arbitrary._
+import org.scalacheck.Arbitrary
+
 import scala.concurrent.Future
 
 trait ArbitraryK[F[_]] {
@@ -11,6 +13,11 @@ trait ArbitraryK[F[_]] {
 }
 
 object ArbitraryK {
+  def apply[F[_]](implicit arbk: ArbitraryK[F]): ArbitraryK[F] = arbk
+
+  implicit val nonEmptyList: ArbitraryK[NonEmptyList] =
+    new ArbitraryK[NonEmptyList] { def synthesize[A: Arbitrary]: Arbitrary[NonEmptyList[A]] = implicitly }
+
   implicit val option: ArbitraryK[Option] =
     new ArbitraryK[Option] { def synthesize[A: Arbitrary]: Arbitrary[Option[A]] = implicitly }
 
@@ -50,11 +57,29 @@ object ArbitraryK {
   implicit def constA[A](implicit A: Arbitrary[A]): ArbitraryK[Const[A, ?]] =
     new ArbitraryK[Const[A, ?]] { def synthesize[B: Arbitrary]: Arbitrary[Const[A, B]] = implicitly }
 
-  implicit def orA[A](implicit A: Arbitrary[A]): ArbitraryK[A Or ?] =
-    new ArbitraryK[A Or ?] { def synthesize[B: Arbitrary]: Arbitrary[A Or B] = implicitly }
+  implicit def xorA[A](implicit A: Arbitrary[A]): ArbitraryK[A Xor ?] =
+    new ArbitraryK[A Xor ?] { def synthesize[B: Arbitrary]: Arbitrary[A Xor B] = implicitly }
 
-  implicit def orB[B](implicit B: Arbitrary[B]): ArbitraryK[? Or B] =
-    new ArbitraryK[? Or B] { def synthesize[A: Arbitrary]: Arbitrary[A Or B] = implicitly }
+  implicit def xorB[B](implicit B: Arbitrary[B]): ArbitraryK[? Xor B] =
+    new ArbitraryK[? Xor B] { def synthesize[A: Arbitrary]: Arbitrary[A Xor B] = implicitly }
+
+  implicit def xorTA[F[_], A](implicit F: ArbitraryK[F], A: Arbitrary[A]): ArbitraryK[XorT[F, A, ?]] =
+    new ArbitraryK[XorT[F, A, ?]] { def synthesize[B: Arbitrary]: Arbitrary[XorT[F, A, B]] = implicitly }
+
+  implicit def xorTB[F[_], B](implicit F: ArbitraryK[F], B: Arbitrary[B]): ArbitraryK[XorT[F, ?, B]] =
+    new ArbitraryK[XorT[F, ?, B]] { def synthesize[A: Arbitrary]: Arbitrary[XorT[F, A, B]] = implicitly }
+
+  implicit def validA[A](implicit A: Arbitrary[A]): ArbitraryK[Validated[A, ?]] =
+    new ArbitraryK[Validated[A, ?]] { def synthesize[B: Arbitrary]: Arbitrary[Validated[A, B]] = implicitly }
+
+  implicit def validB[B](implicit B: Arbitrary[B]): ArbitraryK[Validated[?, B]] =
+    new ArbitraryK[Validated[?, B]] { def synthesize[A: Arbitrary]: Arbitrary[Validated[A, B]] = implicitly }
+
+  implicit def iorA[A](implicit A: Arbitrary[A]): ArbitraryK[A Ior ?] =
+    new ArbitraryK[A Ior ?] { def synthesize[B: Arbitrary]: Arbitrary[A Ior B] = implicitly }
+
+  implicit def iorB[B](implicit B: Arbitrary[B]): ArbitraryK[? Ior B] =
+    new ArbitraryK[? Ior B] { def synthesize[A: Arbitrary]: Arbitrary[A Ior B] = implicitly }
 
   implicit def kleisliA[F[_], A](implicit F: ArbitraryK[F]): ArbitraryK[Kleisli[F, A, ?]] =
     new ArbitraryK[Kleisli[F, A, ?]]{ def synthesize[B: Arbitrary]: Arbitrary[Kleisli[F, A, B]] = implicitly }

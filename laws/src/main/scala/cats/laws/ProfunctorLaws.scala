@@ -1,4 +1,5 @@
-package cats.laws
+package cats
+package laws
 
 import cats.functor.Profunctor
 import cats.syntax.profunctor._
@@ -20,5 +21,5 @@ trait ProfunctorLaws[F[_, _]] {
 
 object ProfunctorLaws {
   def apply[F[_, _]](implicit ev: Profunctor[F]): ProfunctorLaws[F] =
-    new ProfunctorLaws[F] { def F = ev }
+    new ProfunctorLaws[F] { def F: Profunctor[F] = ev }
 }

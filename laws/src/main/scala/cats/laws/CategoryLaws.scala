@@ -1,4 +1,5 @@
-package cats.laws
+package cats
+package laws
 
 import cats.arrow.Category
 import cats.syntax.compose._
@@ -18,5 +19,5 @@ trait CategoryLaws[F[_, _]] extends ComposeLaws[F] {
 
 object CategoryLaws {
   def apply[F[_, _]](implicit ev: Category[F]): CategoryLaws[F] =
-    new CategoryLaws[F] { def F = ev }
+    new CategoryLaws[F] { def F: Category[F] = ev }
 }

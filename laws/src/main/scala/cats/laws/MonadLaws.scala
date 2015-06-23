@@ -1,6 +1,6 @@
-package cats.laws
+package cats
+package laws
 
-import cats.Monad
 import cats.data.Kleisli
 import cats.syntax.flatMap._
 
@@ -33,5 +33,5 @@ trait MonadLaws[F[_]] extends ApplicativeLaws[F] with FlatMapLaws[F] {
 
 object MonadLaws {
   def apply[F[_]](implicit ev: Monad[F]): MonadLaws[F] =
-    new MonadLaws[F] { def F = ev }
+    new MonadLaws[F] { def F: Monad[F] = ev }
 }
