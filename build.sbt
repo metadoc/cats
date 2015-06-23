@@ -24,6 +24,7 @@ lazy val buildSettings = Seq(
   crossScalaVersions := Seq("2.11.6")
 )
 
+
 lazy val metadoc = ProjectRef(file("../metadoc/"), "compilerPlugin")
 lazy val metadocPlugin = project.settings(buildSettings: _*).dependsOn(metadoc) // fake
 
