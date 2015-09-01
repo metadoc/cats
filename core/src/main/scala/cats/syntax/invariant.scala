@@ -3,11 +3,12 @@ package syntax
 
 import cats.functor.Invariant
 
-trait InvariantSyntax {
-  implicit def invariantSyntax[F[_]: Invariant, A](fa: F[A]): InvariantOps[F, A] =
-    new InvariantOps(fa)
+trait InvariantSyntax1 {
+  implicit def invariantSyntaxU[FA](fa: FA)(implicit U: Unapply[Invariant, FA]): Invariant.Ops[U.M, U.A] =
+    new Invariant.Ops[U.M, U.A] {
+      val self = U.subst(fa)
+      val typeClassInstance = U.TC
+    }
 }
 
-class InvariantOps[F[_], A](fa: F[A])(implicit F: Invariant[F]) {
-  def imap[B](f: A => B)(fi: B => A): F[B] = F.imap(fa)(f)(fi)
-}
+trait InvariantSyntax extends Invariant.ToInvariantOps with InvariantSyntax1

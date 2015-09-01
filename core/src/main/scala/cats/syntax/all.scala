@@ -1,4 +1,5 @@
-package cats.syntax
+package cats
+package syntax
 
 trait AllSyntax
     extends ApplySyntax
@@ -7,16 +8,24 @@ trait AllSyntax
     with ComonadSyntax
     with ComposeSyntax
     with ContravariantSyntax
+    with EitherSyntax
     with EqSyntax
     with FlatMapSyntax
     with FoldableSyntax
     with FunctorSyntax
+    with GroupSyntax
     with InvariantSyntax
     with MonadCombineSyntax
     with MonadFilterSyntax
+    with OptionSyntax
     with OrderSyntax
     with PartialOrderSyntax
     with ProfunctorSyntax
+    with ReducibleSyntax
     with SemigroupSyntax
-    with ShowSyntax
+    with SemigroupKSyntax
+    with Show.ToShowOps
+    with SplitSyntax
     with StrongSyntax
+    with TraverseSyntax
+    with XorSyntax

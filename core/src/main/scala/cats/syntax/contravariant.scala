@@ -3,11 +3,14 @@ package syntax
 
 import cats.functor.Contravariant
 
-trait ContravariantSyntax {
-  implicit def invariantSyntax[F[_]: Contravariant, A](fa: F[A]): ContravariantOps[F, A] =
-    new ContravariantOps(fa)
+
+trait ContravariantSyntax1 {
+  implicit def contravariantSyntaxU[FA](fa: FA)(implicit U: Unapply[Contravariant, FA]): Contravariant.Ops[U.M, U.A] =
+    new Contravariant.Ops[U.M, U.A] {
+      val self = U.subst(fa)
+      val typeClassInstance = U.TC
+    }
 }
 
-class ContravariantOps[F[_], A](fa: F[A])(implicit F: Contravariant[F]) {
-  def contramap[B](f: B => A): F[B] = F.contramap(fa)(f)
-}
+trait ContravariantSyntax extends Contravariant.ToContravariantOps with ContravariantSyntax1
+

@@ -1,6 +1,6 @@
 package cats
 
-import simulacrum._
+import simulacrum.typeclass
 
 /**
  * Applicative functor.
@@ -10,17 +10,25 @@ import simulacrum._
  * See: [[https://www.cs.ox.ac.uk/jeremy.gibbons/publications/iterator.pdf The Essence of the Iterator Pattern]]
  * Also: [[http://staff.city.ac.uk/~ross/papers/Applicative.pdf Applicative programming with effects]]
  *
- * Must obey the laws defined in [[laws.ApplicativeLaws]].
+ * Must obey the laws defined in cats.laws.ApplicativeLaws.
  */
-trait Applicative[F[_]] extends Apply[F] { self =>
+@typeclass trait Applicative[F[_]] extends Apply[F] { self =>
+
   /**
-   * `pure` lifts any value into the Applicative Functor
+   * `pure` lifts any value into the Applicative Functor.
    *
    * Applicative[Option].pure(10) = Some(10)
    */
   def pure[A](x: A): F[A]
 
-  override def map[A, B](fa: F[A])(f: A => B): F[B] = apply(fa)(pure(f))
+  /**
+   * `pureEval` lifts any value into the Applicative Functor.
+   *
+   * This variant supports optional laziness.
+   */
+  def pureEval[A](x: Eval[A]): F[A] = pure(x.value)
+
+  override def map[A, B](fa: F[A])(f: A => B): F[B] = ap(fa)(pure(f))
 
   /**
    * Two sequentially dependent Applicatives can be composed.
@@ -35,10 +43,13 @@ trait Applicative[F[_]] extends Apply[F] { self =>
       implicit def G: Applicative[G] = GG
 
     }
-}
 
-object Applicative {
-  def apply[F[_]](implicit ev: Applicative[F]): Applicative[F] = ev
+  def traverse[A, G[_], B](value: G[A])(f: A => F[B])(implicit G: Traverse[G]): F[G[B]] =
+    G.traverse(value)(f)(this)
+
+  def sequence[G[_]: Traverse, A](as: G[F[A]]): F[G[A]] =
+    traverse(as)(a => a)
+
 }
 
 trait CompositeApplicative[F[_],G[_]]

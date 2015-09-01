@@ -8,6 +8,7 @@ package object syntax {
   object comonad extends ComonadSyntax
   object compose extends ComposeSyntax
   object contravariant extends ContravariantSyntax
+  object either extends EitherSyntax
   object eq extends EqSyntax
   object flatMap extends FlatMapSyntax
   object foldable extends FoldableSyntax
@@ -15,10 +16,15 @@ package object syntax {
   object invariant extends InvariantSyntax
   object monadCombine extends MonadCombineSyntax
   object monadFilter extends MonadFilterSyntax
+  object option extends OptionSyntax
   object order extends OrderSyntax
   object partialOrder extends PartialOrderSyntax
   object profunctor extends ProfunctorSyntax
   object semigroup extends SemigroupSyntax
-  object show extends ShowSyntax
+  object semigroupk extends SemigroupKSyntax
+  object show extends Show.ToShowOps
+  object split extends SplitSyntax
   object strong extends StrongSyntax
+  object traverse extends TraverseSyntax
+  object xor extends XorSyntax
 }
